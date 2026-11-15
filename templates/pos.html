@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">POINT OF SALE</p><h1>Billing desk</h1><p class="muted">Find products, build a bill and checkout.</p></div><div class="date-chip" id="today"></div></div>
+<div class="pos-layout">
+  <section class="catalog panel">
+    <div class="catalog-head"><div><h2>Products</h2><span class="muted small">Choose an item to add it to the bill</span></div>
+      <div class="search-wrap"><span>⌕</span><input id="search" placeholder="Search products..." autocomplete="off"></div>
+    </div>
+    <div class="category-row"><button class="category-pill selected" data-category="all">All products</button>{% for cat in products|map(attribute='category')|unique %}<button class="category-pill" data-category="{{ cat|lower }}">{{ cat }}</button>{% endfor %}</div>
+    <div class="product-grid" id="product-grid">
+      {% for p in products %}
+      <article class="product-card" data-id="{{ p.id }}" data-name="{{ p.name|lower }}" data-category="{{ p.category|lower }}" data-price="{{ p.selling_price }}" data-stock="{{ p.stock }}">
+        <div class="product-image">{% if p.image %}<img src="{{ url_for('static', filename='uploads/' + p.image) }}" alt="{{ p.name }}">{% else %}<span>RNV</span>{% endif %}</div>
+        <div class="product-info"><span class="product-category">{{ p.category }}</span><h3>{{ p.name }}</h3><div class="product-bottom"><strong>{{ p.selling_price|money }}</strong><button class="add-btn" {% if p.stock < 1 %}disabled{% endif %} onclick="addProduct({{ p.id }})">{% if p.stock < 1 %}Out of stock{% else %}+ Add{% endif %}</button></div><small class="stock-label">{{ p.stock }} in stock</small></div>
+      </article>
+      {% else %}<div class="empty-state">No products yet. Add your first item in Products.</div>{% endfor %}
+    </div>
+  </section>
+  <aside class="bill-panel panel">
+    <div class="bill-title"><div><p class="eyebrow">CURRENT INVOICE</p><h2>Your bill</h2></div><span class="live-dot">LIVE</span></div>
+    <label class="field-label" for="customer">Customer name</label><input id="customer" class="text-input" value="Cash Customer" placeholder="Customer name">
+    <div class="invoice-meta"><span>Invoice</span><strong id="invoice-preview">RNV-NEW</strong></div>
+    <div class="bill-items" id="bill-items"><div class="bill-empty"><span>＋</span><p>Your bill is empty</p><small>Add products from the catalogue</small></div></div>
+    <div class="bill-summary"><div><span>Subtotal</span><strong id="subtotal">₹0.00</strong></div><div class="grand-total"><span>Grand total</span><strong id="grand-total">₹0.00</strong></div></div>
+    <button class="primary checkout-btn" id="checkout" onclick="checkout()">Complete sale <span>→</span></button>
+    <p class="secure-note">✓ Sale records are saved to your database</p>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='pos.js') }}"></script>{% endblock %}

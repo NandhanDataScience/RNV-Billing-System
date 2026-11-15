@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="login-card">
+  <div class="login-mark">
+    <img src="{{ url_for('static', filename='rnv_vels_crest.png') }}" alt="RNV Vels">
+  </div>
+  <p class="eyebrow">STORE MANAGEMENT • BILLING DESK</p>
+  <h1>Welcome back</h1><p class="muted">Sign in to continue to your store.</p>
+  <form method="post" class="login-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Username</label><input name="username" autocomplete="username" required autofocus placeholder="Enter username">
+    <label>Password</label><input type="password" name="password" autocomplete="current-password" required placeholder="Enter password">
+    <button class="primary full">Sign in →</button>
+  </form>
+  <p class="login-foot">Secure access for RNV Stores staff</p>
+</section>
+{% endblock %}

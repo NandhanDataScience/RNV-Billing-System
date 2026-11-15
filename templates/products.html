@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">INVENTORY MANAGEMENT</p><h1>Products</h1><p class="muted">Manage product images, prices, categories and stock.</p></div><button class="primary" onclick="openProductModal()">＋ Add product</button></div>
+<section class="panel table-panel">
+  <div class="table-toolbar"><h2>Product catalogue <span class="count-badge">{{ products|length }}</span></h2><input id="product-filter" class="text-input compact" placeholder="Search product..."></div>
+  <div class="table-scroll"><table id="products-table"><thead><tr><th>Product</th><th>Category</th><th>Selling price</th><th>Cost price</th><th>Stock</th><th>Actions</th></tr></thead><tbody>
+  {% for p in products %}<tr data-name="{{ p.name|lower }}">
+    <td><div class="product-cell">{% if p.image %}<img src="{{ url_for('static', filename='uploads/' + p.image) }}">{% else %}<span class="mini-placeholder">R</span>{% endif %}<strong>{{ p.name }}</strong></div></td><td>{{ p.category }}</td><td>{{ p.selling_price|money }}</td><td>{{ p.cost_price|money }}</td><td><span class="stock-badge {{ 'low' if p.stock < 5 else '' }}">{{ p.stock }}</span></td>
+    <td class="actions"><button class="text-action" onclick='editProduct({{ {"id":p.id,"name":p.name,"category":p.category,"selling_price":p.selling_price,"cost_price":p.cost_price,"stock":p.stock}|tojson }})'>Edit</button><form method="post" action="{{ url_for('delete_product', product_id=p.id) }}" onsubmit="return confirm('Hide this product from billing?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="text-action danger-text">Hide</button></form></td>
+  </tr>{% else %}<tr><td colspan="6" class="empty-table">No products added yet.</td></tr>{% endfor %}
+  </tbody></table></div>
+</section>
+<div class="modal-backdrop" id="product-modal"><div class="modal-card"><div class="modal-head"><div><p class="eyebrow">CATALOGUE</p><h2 id="modal-title">Add product</h2></div><button class="close-btn" onclick="closeProductModal()">×</button></div>
+<form method="post" enctype="multipart/form-data" class="product-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="product_id" id="product_id">
+<label>Product name</label><input name="name" id="p-name" required placeholder="e.g. Rice Bag 25 Kg">
+<div class="form-two"><div><label>Category</label><input name="category" id="p-category" value="Grocery" required></div><div><label>Stock quantity</label><input type="number" min="0" name="stock" id="p-stock" value="0" required></div></div>
+<div class="form-two"><div><label>Selling price (₹)</label><input type="number" min="0" step="0.01" name="selling_price" id="p-selling" required></div><div><label>Cost price (₹)</label><input type="number" min="0" step="0.01" name="cost_price" id="p-cost" required></div></div>
+<label>Product image <span class="muted">(PNG/JPG/WEBP/GIF, max 5 MB)</span></label><input type="file" name="image" accept=".png,.jpg,.jpeg,.webp,.gif"><small class="muted">Background is removed automatically on this computer. The first upload downloads the model once.</small>
+<button class="primary full">Save product</button></form></div></div>
+{% endblock %}
+{% block scripts %}<script>
+const modal=document.getElementById('product-modal');
+function openProductModal(){document.querySelector('.product-form').reset();document.getElementById('product_id').value='';document.getElementById('modal-title').textContent='Add product';modal.classList.add('show')}
+function closeProductModal(){modal.classList.remove('show')}
+function editProduct(p){openProductModal();document.getElementById('modal-title').textContent='Edit product';for(const [key,id] of Object.entries({id:'product_id',name:'p-name',category:'p-category',stock:'p-stock',selling_price:'p-selling',cost_price:'p-cost'}))document.getElementById(id).value=p[key]}
+modal.addEventListener('click',e=>{if(e.target===modal)closeProductModal()});
+document.getElementById('product-filter').addEventListener('input',e=>{const q=e.target.value.toLowerCase();document.querySelectorAll('#products-table tbody tr').forEach(r=>r.hidden=!r.dataset.name.includes(q))});
+</script>{% endblock %}

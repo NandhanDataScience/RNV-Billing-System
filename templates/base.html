@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page_title or "Billing Desk" }} | RNV STORES</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Great+Vibes&display=swap" rel="stylesheet">
+  <script>document.documentElement.dataset.theme = localStorage.getItem('rnv-theme') === 'dark' ? 'dark' : 'light';</script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+</head>
+<body>
+{% if current_user.is_authenticated %}
+<header class="topbar">
+  <a class="brand" href="{{ url_for('pos') }}" aria-label="RNV Vels home">
+    <img src="{{ url_for('static', filename='rnv_vels_crest.png') }}" alt="RNV Vels">
+  </a>
+  <nav>
+    <a href="{{ url_for('pos') }}" class="{{ 'active' if request.endpoint == 'pos' else '' }}">Billing</a>
+    <a href="{{ url_for('products') }}" class="{{ 'active' if request.endpoint == 'products' else '' }}">Products</a>
+    <a href="{{ url_for('sales') }}" class="{{ 'active' if request.endpoint == 'sales' else '' }}">Sales History</a>
+    <a class="export-link" href="{{ export_url|default(url_for('export_excel')) }}">↓ Excel Export</a>
+  </nav>
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">☾</button>
+  <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="logout-btn">Sign out</button></form>
+</header>
+{% endif %}
+<main class="{% if current_user.is_authenticated %}shell{% else %}auth-shell{% endif %}">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}{% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+<script>window.CSRF_TOKEN = "{{ csrf_token() }}";</script>
+<script>
+  const themeToggle = document.getElementById('theme-toggle');
+  if (themeToggle) {
+    const updateThemeToggle = () => {
+      const isDark = document.documentElement.dataset.theme === 'dark';
+      const label = `Switch to ${isDark ? 'light' : 'dark'} mode`;
+      themeToggle.textContent = isDark ? '☀' : '☾';
+      themeToggle.setAttribute('aria-label', label);
+      themeToggle.title = label;
+    };
+    updateThemeToggle();
+    themeToggle.addEventListener('click', () => {
+      const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = nextTheme;
+      localStorage.setItem('rnv-theme', nextTheme);
+      updateThemeToggle();
+    });
+  }
+</script>
+{% block scripts %}{% endblock %}
+</body></html>

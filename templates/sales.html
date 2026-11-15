@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">TRANSACTION RECORDS</p>
+    <h1>Sales history</h1>
+    {% if view_mode == "months" %}
+      <p class="muted">Choose a month to browse sales by date.</p>
+    {% elif view_mode == "dates" %}
+      <p class="muted">Invoices recorded in {{ month_label }}.</p>
+    {% else %}
+      <p class="muted">Invoices recorded on {{ date_label }}.</p>
+    {% endif %}
+  </div>
+  {% if view_mode == "dates" %}
+    <a class="primary button-link" href="{{ export_url }}">↓ Download {{ month_label }} Excel</a>
+  {% elif view_mode == "invoices" %}
+    <a class="primary button-link" href="{{ export_url }}">↓ Download {{ date_label }} Excel</a>
+  {% else %}
+    <a class="primary button-link" href="{{ export_url }}">↓ Download All Excel</a>
+  {% endif %}
+</div>
+
+{% if view_mode == "dates" %}
+  <nav class="sales-breadcrumbs" aria-label="Breadcrumb">
+    <a href="{{ url_for('sales') }}">Sales history</a>
+    <span aria-hidden="true">/</span>
+    <span aria-current="page">{{ month_label }}</span>
+  </nav>
+{% elif view_mode == "invoices" %}
+  <nav class="sales-breadcrumbs" aria-label="Breadcrumb">
+    <a href="{{ url_for('sales') }}">Sales history</a>
+    <span aria-hidden="true">/</span>
+    <a href="{{ url_for('sales_month', year=year, month=month) }}">{{ month_label }}</a>
+    <span aria-hidden="true">/</span>
+    <span aria-current="page">{{ date_label }}</span>
+  </nav>
+{% endif %}
+
+{% if view_mode == "months" %}
+  <section class="panel table-panel">
+    <div class="table-toolbar">
+      <h2>Sales by month <span class="count-badge">{{ months|length }}</span></h2>
+    </div>
+    {% if months %}
+      <div class="sales-period-list">
+        {% for period in months %}
+          <a class="sales-period-row" href="{{ url_for('sales_month', year=period.year, month=period.month) }}">
+            <span class="sales-period-label">
+              <strong>{{ period.label }}</strong>
+              <small>{{ period.count }} {{ "invoice" if period.count == 1 else "invoices" }}</small>
+            </span>
+            <strong class="sales-period-total">{{ period.total|money }}</strong>
+            <span class="sales-period-arrow" aria-hidden="true">View dates →</span>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="empty-table">No sales recorded yet.</p>
+    {% endif %}
+  </section>
+{% elif view_mode == "dates" %}
+  <section class="panel table-panel">
+    <div class="table-toolbar">
+      <h2>Dates in {{ month_label }} <span class="count-badge">{{ dates|length }}</span></h2>
+    </div>
+    {% if dates %}
+      <div class="sales-period-list">
+        {% for period in dates %}
+          <a class="sales-period-row" href="{{ url_for('sales_date', year=year, month=month, day=period.date.day) }}">
+            <span class="sales-period-label">
+              <strong>{{ period.date.strftime('%A, %d %B %Y') }}</strong>
+              <small>{{ period.count }} {{ "invoice" if period.count == 1 else "invoices" }}</small>
+            </span>
+            <strong class="sales-period-total">{{ period.total|money }}</strong>
+            <span class="sales-period-arrow" aria-hidden="true">View bills →</span>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="empty-table">No sales recorded in this month.</p>
+    {% endif %}
+  </section>
+{% else %}
+  <section class="panel table-panel">
+    <div class="table-toolbar">
+      <h2>Bills for {{ date_label }} <span class="count-badge">{{ sales|length }}</span></h2>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Invoice</th><th>Date / time</th><th>Customer</th><th>Items</th><th>Total</th></tr>
+        </thead>
+        <tbody>
+          {% for sale in sales %}
+            <tr>
+              <td><strong class="invoice-code">{{ sale.invoice_no }}</strong></td>
+              <td>{{ sale.created_at.strftime('%d %b %Y, %I:%M %p') }}</td>
+              <td>{{ sale.customer_name }}</td>
+              <td>{{ sale.items|sum(attribute='quantity') }}</td>
+              <td><strong>{{ sale.total|money }}</strong></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" class="empty-table">No bills recorded on this date.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endif %}
+{% endblock %}
