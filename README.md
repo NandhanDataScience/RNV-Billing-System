@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # RNV STORES — Billing & Inventory Website
 
 A responsive Flask + SQLite point-of-sale website inspired by the supplied billing-screen reference. It includes login, product/inventory management, cart checkout, sales history and Excel export.
@@ -71,3 +72,7 @@ This is a local starter application, not a production deployment package. Before
 
 ## Design notes
 The store brand uses Great Vibes (bold black) and the rest of the interface uses Abril Fatface, matching the supplied font references. Google Fonts are loaded online; local fallback fonts are provided by the browser if offline.
+=======
+# RNV-Billing-System
+Billing system for my own shop.
+>>>>>>> 4c3917219a9385842a587361c723f818b6ee6d05
