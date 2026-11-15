@@ -31,8 +31,14 @@ async function checkout(){
  const button=document.getElementById('checkout');button.disabled=true;button.textContent='Saving sale...';
  try{
   const response=await fetch('/checkout',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':window.CSRF_TOKEN},body:JSON.stringify({customer:document.getElementById('customer').value,items:[...cart.values()].map(i=>({id:i.id,quantity:i.quantity}))})});
-  const result=await response.json();
-  if(!response.ok||!result.ok)throw new Error(result.message||'Could not save sale.');
+  const body=await response.text();
+  let result;
+  try{result=JSON.parse(body)}
+  catch{
+   const detail=body.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+   throw new Error(`Checkout failed (HTTP ${response.status}): ${detail.slice(0,240)||'The server returned an unreadable response.'}`);
+  }
+  if(!response.ok||!result.ok)throw new Error(result.message||`Could not save sale (HTTP ${response.status}).`);
   alert(`Sale completed!\nInvoice: ${result.invoice}\nTotal: ${rupees(result.total)}`);
   window.location.reload();
  }catch(e){alert(e.message);button.disabled=false;button.innerHTML='Complete sale <span>→</span>'}
