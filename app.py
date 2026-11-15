@@ -7,7 +7,7 @@ from flask import Flask, abort, render_template, request, redirect, url_for, fla
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_wtf.csrf import CSRFProtect
-from sqlalchemy import func
+from sqlalchemy import func, extract, cast, Date
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from openpyxl import Workbook
@@ -19,8 +19,18 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.environ.get("RNV_SECRET_KEY", "change-this-secret-before-deployment")
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(BASE_DIR, "rnv_stores.db")
+app.config["SECRET_KEY"] = os.environ.get("RNV_SECRET_KEY")
+if not app.config["SECRET_KEY"]:
+    raise RuntimeError("RNV_SECRET_KEY environment variable is required.")
+
+database_url = os.environ.get("DATABASE_URL")
+if not database_url:
+    raise RuntimeError("DATABASE_URL is missing. Configure Neon PostgreSQL before starting the app.")
+# Normalize provider URLs if they use the legacy postgres:// scheme.
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = database_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
@@ -260,16 +270,18 @@ def checkout():
 @app.route("/sales")
 @login_required
 def sales():
-    month_key = func.strftime("%Y-%m", Sale.created_at)
-    rows = (db.session.query(month_key, func.count(Sale.id), func.sum(Sale.total))
-            .group_by(month_key).order_by(month_key.desc()).all())
+    year_expr = extract("year", Sale.created_at)
+    month_expr = extract("month", Sale.created_at)
+    rows = (db.session.query(year_expr, month_expr, func.count(Sale.id), func.sum(Sale.total))
+            .group_by(year_expr, month_expr)
+            .order_by(year_expr.desc(), month_expr.desc()).all())
     months = [{
-        "year": int(key[:4]),
-        "month": int(key[5:]),
-        "label": datetime.strptime(key, "%Y-%m").strftime("%B %Y"),
+        "year": int(year),
+        "month": int(month),
+        "label": datetime(int(year), int(month), 1).strftime("%B %Y"),
         "count": count,
         "total": total or 0,
-    } for key, count, total in rows]
+    } for year, month, count, total in rows]
     return render_template(
         "sales.html", view_mode="months", months=months, page_title="Sales history",
         export_url=url_for("export_excel"),
@@ -285,15 +297,15 @@ def sales_month(year, month):
     except ValueError:
         abort(404)
 
-    sale_date = func.date(Sale.created_at)
+    sale_date = cast(Sale.created_at, Date)
     rows = (db.session.query(sale_date, func.count(Sale.id), func.sum(Sale.total))
             .filter(Sale.created_at >= month_start, Sale.created_at < month_end)
             .group_by(sale_date).order_by(sale_date.desc()).all())
     dates = [{
-        "date": datetime.strptime(key, "%Y-%m-%d"),
+        "date": datetime.combine(day, datetime.min.time()),
         "count": count,
         "total": total or 0,
-    } for key, count, total in rows]
+    } for day, count, total in rows]
     month_label = month_start.strftime("%B %Y")
     return render_template(
         "sales.html", view_mode="dates", dates=dates, year=year, month=month,
@@ -396,11 +408,17 @@ def too_large(_):
 
 
 def initialize_database():
+    # Set RNV_SKIP_DB_INIT=1 when running the one-time migration script.
+    if os.environ.get("RNV_SKIP_DB_INIT") == "1":
+        return
     with app.app_context():
         db.create_all()
-        if not User.query.filter_by(username=os.environ.get("RNV_ADMIN_USER", "admin")).first():
-            user = User(username=os.environ.get("RNV_ADMIN_USER", "admin"))
-            user.set_password(os.environ.get("RNV_ADMIN_PASSWORD", "Murugan@123"))
+        # Never create a predictable default login on a new production database.
+        admin_user = os.environ.get("RNV_ADMIN_USER")
+        admin_password = os.environ.get("RNV_ADMIN_PASSWORD")
+        if admin_user and admin_password and not User.query.filter_by(username=admin_user).first():
+            user = User(username=admin_user)
+            user.set_password(admin_password)
             db.session.add(user)
             db.session.commit()
 
